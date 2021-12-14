@@ -114,11 +114,11 @@ lazy var classificationRequest: VNCoreMLRequest = {
   }
 
   func classify(image: UIImage) {
-      guard let cgImage = image.cgImage else{
+      guard let ciImage = CIImage(image: image) else{
           print("Failed to get image")
           return
       }
-      let handler = VNImageRequestHandler(cgImage: cgImage)
+      let handler = VNImageRequestHandler(ciImage: ciImage)
       do {
           try handler.perform([self.classificationRequest])
       } catch {
@@ -131,16 +131,19 @@ lazy var classificationRequest: VNCoreMLRequest = {
             if results.isEmpty {
                 self.resultsLabel.text = "Nothing found"
             } else {
-                let result = results[0].identifier
+                for result in results{
+                    print("\(result.identifier) \(result.confidence)")
+                }
+                let id = results[0].identifier
                 let confidence = results[0].confidence
-                resultsLabel.text = "\(result) \(confidence)"
-//                if(confidence >= 0.6){
-//                    resultsLabel.text = result
-//                }else{
-//                    resultsLabel.text = "Not sure"
-//                }
-                // self.confidenceLabel.text = String(format: "%.1f%%", confidence * 100)
-                print(result)
+                
+                if(confidence >= 0.6){
+                    resultsLabel.text = id
+                }else{
+                    resultsLabel.text = "Not sure"
+                }
+//                 self.confidenceLabel.text = String(format: "%.1f%%", confidence * 100)
+                print(id)
             }
             showResultsView()
         } else if let error = error {
