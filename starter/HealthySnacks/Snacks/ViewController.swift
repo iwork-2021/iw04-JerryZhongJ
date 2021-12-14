@@ -27,6 +27,8 @@
 /// THE SOFTWARE.
 
 import UIKit
+import CoreML
+import Vision
 
 class ViewController: UIViewController {
   
@@ -39,6 +41,22 @@ class ViewController: UIViewController {
 
   var firstTime = true
 
+lazy var classificationRequest: VNCoreMLRequest = {
+    do{
+        let classifier = try SnackClassifier(configuration: MLModelConfiguration())
+        
+        let model = try VNCoreMLModel(for: classifier.model)
+        let request = VNCoreMLRequest(model: model, completionHandler: {
+            [weak self] request,error in
+            self?.processObservations(for: request, error: error)
+        })
+        return request
+        
+        
+    } catch {
+        fatalError("Failed to create request")
+    }
+}()
   override func viewDidLoad() {
     super.viewDidLoad()
     cameraButton.isEnabled = UIImagePickerController.isSourceTypeAvailable(.camera)
@@ -96,7 +114,42 @@ class ViewController: UIViewController {
   }
 
   func classify(image: UIImage) {
+      guard let cgImage = image.cgImage else{
+          print("Failed to get image")
+          return
+      }
+      let handler = VNImageRequestHandler(cgImage: cgImage)
+      do {
+          try handler.perform([self.classificationRequest])
+      } catch {
+          print("Failed to perform classification: \(error)")
+      }
   }
+    
+    func processObservations(for request: VNRequest, error: Error?) {
+        if let results = request.results as? [VNClassificationObservation] {
+            if results.isEmpty {
+                self.resultsLabel.text = "Nothing found"
+            } else {
+                let result = results[0].identifier
+                let confidence = results[0].confidence
+                resultsLabel.text = "\(result) \(confidence)"
+//                if(confidence >= 0.6){
+//                    resultsLabel.text = result
+//                }else{
+//                    resultsLabel.text = "Not sure"
+//                }
+                // self.confidenceLabel.text = String(format: "%.1f%%", confidence * 100)
+                print(result)
+            }
+            showResultsView()
+        } else if let error = error {
+            self.resultsLabel.text = "Error: \(error.localizedDescription)"
+        } else {
+            self.resultsLabel.text = "???"
+        }
+        
+    }
 }
 
 extension ViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
